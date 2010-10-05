@@ -9,7 +9,9 @@
 -define(arc(HashCode), ((HashCode band 2#11111)+1)).
 -define(narc(HashCode,N), (((HashCode bsr (5*N)) band 2#11111)+1)).
 -define(next(HashCode), (HashCode bsr 5)).
--define(hash(Key), erlang:phash(Key,16#FFFFFFFF)).
+-define(hash(Key), erlang:phash2(Key)).
+-define(tuplize(Arc,Table,N), resize_impl2(element(Arc, Table), N)).
+-define(resize(Arc,Table,Depth,N), resize_impl(element(Arc, Table), Depth-1,N)).
 
 -record(hashtrie, {count = 0,
                    resize_border = 32*8,
@@ -51,72 +53,23 @@ resize_impl2(Pairs, N) ->
                 Pairs). % XXX:
      
 resize_impl(Table, 0, N) ->
-    {resize_impl2(element(01, Table), N),
-     resize_impl2(element(02, Table), N),
-     resize_impl2(element(03, Table), N),
-     resize_impl2(element(04, Table), N),
-     resize_impl2(element(05, Table), N),
-     resize_impl2(element(06, Table), N),
-     resize_impl2(element(07, Table), N),
-     resize_impl2(element(08, Table), N),
-     resize_impl2(element(09, Table), N),
-     resize_impl2(element(10, Table), N),
-     resize_impl2(element(11, Table), N),
-     resize_impl2(element(12, Table), N),
-     resize_impl2(element(13, Table), N),
-     resize_impl2(element(14, Table), N),
-     resize_impl2(element(15, Table), N),
-     resize_impl2(element(16, Table), N),
-     resize_impl2(element(17, Table), N),
-     resize_impl2(element(18, Table), N),
-     resize_impl2(element(19, Table), N),
-     resize_impl2(element(20, Table), N),
-     resize_impl2(element(21, Table), N),
-     resize_impl2(element(22, Table), N),
-     resize_impl2(element(23, Table), N),
-     resize_impl2(element(24, Table), N),
-     resize_impl2(element(25, Table), N),
-     resize_impl2(element(26, Table), N),
-     resize_impl2(element(27, Table), N),
-     resize_impl2(element(28, Table), N),
-     resize_impl2(element(29, Table), N),
-     resize_impl2(element(30, Table), N),
-     resize_impl2(element(31, Table), N),
-     resize_impl2(element(32, Table), N)};
+    {?tuplize(01,Table,N),?tuplize(02,Table,N),?tuplize(03,Table,N),?tuplize(04,Table,N),
+     ?tuplize(05,Table,N),?tuplize(06,Table,N),?tuplize(07,Table,N),?tuplize(08,Table,N),
+     ?tuplize(09,Table,N),?tuplize(10,Table,N),?tuplize(11,Table,N),?tuplize(12,Table,N),
+     ?tuplize(13,Table,N),?tuplize(14,Table,N),?tuplize(15,Table,N),?tuplize(16,Table,N),
+     ?tuplize(17,Table,N),?tuplize(18,Table,N),?tuplize(19,Table,N),?tuplize(20,Table,N),
+     ?tuplize(21,Table,N),?tuplize(22,Table,N),?tuplize(23,Table,N),?tuplize(24,Table,N),
+     ?tuplize(25,Table,N),?tuplize(26,Table,N),?tuplize(27,Table,N),?tuplize(28,Table,N),
+     ?tuplize(29,Table,N),?tuplize(30,Table,N),?tuplize(31,Table,N),?tuplize(32,Table,N)};
 resize_impl(Table, Depth, N) ->
-    {resize_impl(element(01, Table), Depth-1, N),
-     resize_impl(element(02, Table), Depth-1, N),
-     resize_impl(element(03, Table), Depth-1, N),
-     resize_impl(element(04, Table), Depth-1, N),
-     resize_impl(element(05, Table), Depth-1, N),
-     resize_impl(element(06, Table), Depth-1, N),
-     resize_impl(element(07, Table), Depth-1, N),
-     resize_impl(element(08, Table), Depth-1, N),
-     resize_impl(element(09, Table), Depth-1, N),
-     resize_impl(element(10, Table), Depth-1, N),
-     resize_impl(element(11, Table), Depth-1, N),
-     resize_impl(element(12, Table), Depth-1, N),
-     resize_impl(element(13, Table), Depth-1, N),
-     resize_impl(element(14, Table), Depth-1, N),
-     resize_impl(element(15, Table), Depth-1, N),
-     resize_impl(element(16, Table), Depth-1, N),
-     resize_impl(element(17, Table), Depth-1, N),
-     resize_impl(element(18, Table), Depth-1, N),
-     resize_impl(element(19, Table), Depth-1, N),
-     resize_impl(element(20, Table), Depth-1, N),
-     resize_impl(element(21, Table), Depth-1, N),
-     resize_impl(element(22, Table), Depth-1, N),
-     resize_impl(element(23, Table), Depth-1, N),
-     resize_impl(element(24, Table), Depth-1, N),
-     resize_impl(element(25, Table), Depth-1, N),
-     resize_impl(element(26, Table), Depth-1, N),
-     resize_impl(element(27, Table), Depth-1, N),
-     resize_impl(element(28, Table), Depth-1, N),
-     resize_impl(element(29, Table), Depth-1, N),
-     resize_impl(element(30, Table), Depth-1, N),
-     resize_impl(element(31, Table), Depth-1, N),
-     resize_impl(element(32, Table), Depth-1, N)}.
-      
+    {?resize(01,Table,Depth,N),?resize(02,Table,Depth,N),?resize(03,Table,Depth,N),?resize(04,Table,Depth,N),
+     ?resize(05,Table,Depth,N),?resize(06,Table,Depth,N),?resize(07,Table,Depth,N),?resize(08,Table,Depth,N),
+     ?resize(09,Table,Depth,N),?resize(10,Table,Depth,N),?resize(11,Table,Depth,N),?resize(12,Table,Depth,N),
+     ?resize(13,Table,Depth,N),?resize(14,Table,Depth,N),?resize(15,Table,Depth,N),?resize(16,Table,Depth,N),
+     ?resize(17,Table,Depth,N),?resize(18,Table,Depth,N),?resize(19,Table,Depth,N),?resize(20,Table,Depth,N),
+     ?resize(21,Table,Depth,N),?resize(22,Table,Depth,N),?resize(23,Table,Depth,N),?resize(24,Table,Depth,N),
+     ?resize(25,Table,Depth,N),?resize(26,Table,Depth,N),?resize(27,Table,Depth,N),?resize(28,Table,Depth,N),
+     ?resize(29,Table,Depth,N),?resize(30,Table,Depth,N),?resize(31,Table,Depth,N),?resize(32,Table,Depth,N)}.
 
 add(Key, Value, #hashtrie{count=Count,resize_border=Count}=Trie) ->
     add(Key, Value, resize(Trie));
