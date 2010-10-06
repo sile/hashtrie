@@ -1,96 +1,102 @@
 -module(hashtrie).
--compile(export_all).
+-export([new/0, size/1, find/2, store/3, remove/2, foreach/2]).
 
--define(ROOT, {[], [], [], [], [], [], [], [],
-               [], [], [], [], [], [], [], [],
-               [], [], [], [], [], [], [], [],
-               [], [], [], [], [], [], [], []}).
-
--define(arc(HashCode), ((HashCode band 2#11111)+1)).
--define(narc(HashCode,N), (((HashCode bsr (5*N)) band 2#11111)+1)).
--define(next(HashCode), (HashCode bsr 5)).
+-define(EMPTY_TABLE, {[], [], [], [], [], [], [], [],[], [], [], [], [], [], [], []}).
 -define(hash(Key), erlang:phash2(Key)).
--define(tuplize(Arc,Table,N), resize_impl2(element(Arc, Table), N)).
--define(resize(Arc,Table,Depth,N), resize_impl(element(Arc, Table), Depth-1,N)).
+-define(index(HashCode), ((HashCode band 2#1111)+1)).
+-define(nth_index(HashCode,N), (((HashCode bsr (4*N)) band 2#1111)+1)).
+-define(next(HashCode), (HashCode bsr 4)).
+-define(resize(Idx,Tab,Dep,N), resize_impl(element(Idx, Tab), Dep-1,N)).
+-define(relocate(Idx,Tab,N), relocate_entries(element(Idx, Tab), N)).
 
 -record(hashtrie, {count = 0,
-                   resize_border = 32*8,
+                   next_resize_trigger = 16*4,
                    root_depth = 0,
-                   root = ?ROOT}).
-
-add_list([], Hamt) -> Hamt;
-add_list([{Key,Value}|Pairs], Hamt) ->
-    add_list(Pairs, add(Key,Value,Hamt)).
-
-sh1([],_) -> done;
-sh1([{K,_}|Pairs],H) ->
-    case find(K,H) of
-        {K,_} -> sh1(Pairs,H);
-        R -> {failed,R,K}
-    end.
+                   root = ?EMPTY_TABLE}).
 
 new() ->
-    #hashtrie{}.
+    #hashtrie{}. 
 
-find(Key, #hashtrie{root=Table,root_depth=Depth}) ->
-    lists:keyfind(Key, 1, find_candidates(?hash(Key), Table, Depth)).
+size(#hashtrie{count=Cnt}) ->
+    Cnt.
 
-find_candidates(Hash, Table, 0) ->
-    element(?arc(Hash), Table);
-find_candidates(Hash, Table, Depth) ->
-    find_candidates(?next(Hash), element(?arc(Hash),Table), Depth-1).
+find(Key, #hashtrie{root=Tab, root_depth=Dep}) ->
+    lists:keyfind(Key, 1, find_candidates(?hash(Key), Tab, Dep)).
 
-resize(#hashtrie{root=Table,root_depth=Depth,resize_border=Border}=Trie) ->
-    NewTable = resize_impl(Table, Depth, Depth+1),
-    Trie#hashtrie{root=NewTable, root_depth=Depth+1, resize_border=Border*32}.
+find_candidates(Hash, Tab, 0) ->
+    element(?index(Hash), Tab);
+find_candidates(Hash, Tab, Dep) ->
+    find_candidates(?next(Hash), element(?index(Hash),Tab), Dep-1).
 
-resize_impl2(Pairs, N) ->
-    lists:foldl(fun({K,_}=Pair, Sub) ->
-                        Arc = ?narc(?hash(K),N),
-                        setelement(Arc,Sub,[Pair|element(Arc,Sub)])
-                end,
-                ?ROOT,
-                Pairs). % XXX:
-     
-resize_impl(Table, 0, N) ->
-    {?tuplize(01,Table,N),?tuplize(02,Table,N),?tuplize(03,Table,N),?tuplize(04,Table,N),
-     ?tuplize(05,Table,N),?tuplize(06,Table,N),?tuplize(07,Table,N),?tuplize(08,Table,N),
-     ?tuplize(09,Table,N),?tuplize(10,Table,N),?tuplize(11,Table,N),?tuplize(12,Table,N),
-     ?tuplize(13,Table,N),?tuplize(14,Table,N),?tuplize(15,Table,N),?tuplize(16,Table,N),
-     ?tuplize(17,Table,N),?tuplize(18,Table,N),?tuplize(19,Table,N),?tuplize(20,Table,N),
-     ?tuplize(21,Table,N),?tuplize(22,Table,N),?tuplize(23,Table,N),?tuplize(24,Table,N),
-     ?tuplize(25,Table,N),?tuplize(26,Table,N),?tuplize(27,Table,N),?tuplize(28,Table,N),
-     ?tuplize(29,Table,N),?tuplize(30,Table,N),?tuplize(31,Table,N),?tuplize(32,Table,N)};
-resize_impl(Table, Depth, N) ->
-    {?resize(01,Table,Depth,N),?resize(02,Table,Depth,N),?resize(03,Table,Depth,N),?resize(04,Table,Depth,N),
-     ?resize(05,Table,Depth,N),?resize(06,Table,Depth,N),?resize(07,Table,Depth,N),?resize(08,Table,Depth,N),
-     ?resize(09,Table,Depth,N),?resize(10,Table,Depth,N),?resize(11,Table,Depth,N),?resize(12,Table,Depth,N),
-     ?resize(13,Table,Depth,N),?resize(14,Table,Depth,N),?resize(15,Table,Depth,N),?resize(16,Table,Depth,N),
-     ?resize(17,Table,Depth,N),?resize(18,Table,Depth,N),?resize(19,Table,Depth,N),?resize(20,Table,Depth,N),
-     ?resize(21,Table,Depth,N),?resize(22,Table,Depth,N),?resize(23,Table,Depth,N),?resize(24,Table,Depth,N),
-     ?resize(25,Table,Depth,N),?resize(26,Table,Depth,N),?resize(27,Table,Depth,N),?resize(28,Table,Depth,N),
-     ?resize(29,Table,Depth,N),?resize(30,Table,Depth,N),?resize(31,Table,Depth,N),?resize(32,Table,Depth,N)}.
+store(Key, Value, #hashtrie{count=Cnt,next_resize_trigger=Cnt}=Trie) ->
+    store(Key, Value, resize(Trie));
+store(Key, Value, #hashtrie{root=Tab, root_depth=Dep, count=Cnt}=Trie) ->
+    {NewTab, NewCnt} = store_impl(Key, Value, ?hash(Key), Tab, Dep, Cnt),
+    Trie#hashtrie{root=NewTab, count=NewCnt}.
 
-add(Key, Value, #hashtrie{count=Count,resize_border=Count}=Trie) ->
-    add(Key, Value, resize(Trie));
-add(Key, Value, #hashtrie{root=Table,root_depth=Depth,count=Count}=Trie) ->
-    {NewTable,NewCount} = add_impl(Key, Value, ?hash(Key), Table, Depth, Count),
-    Trie#hashtrie{root=NewTable, count=NewCount}.
+store_impl(Key, Value, Hash, Tab, 0, Cnt) ->
+    Idx = ?index(Hash),
+    {NewEntries, NewCnt} = list_insert(Key, Value, element(Idx,Tab), [], Cnt),
+    {setelement(Idx,Tab,NewEntries), NewCnt};
+store_impl(Key, Value, Hash, Tab, Dep, Cnt) ->
+    Idx = ?index(Hash),
+    {NewSubTab, NewCnt} = store_impl(Key, Value, ?next(Hash), element(Idx,Tab), Dep-1, Cnt),
+    {setelement(Idx,Tab,NewSubTab), NewCnt}.
 
-add_impl(Key, Value, Hash, Table, 0, Count) ->
-    Arc=?arc(Hash),
-    {NewList,NewCount} = insert(Key, Value, element(Arc,Table), [], Count),
-    {setelement(Arc,Table,NewList), NewCount};
-add_impl(Key, Value, Hash, Table, Depth, Count) ->
-    Arc=?arc(Hash),
-    {SubNode, NewCount} = add_impl(Key, Value, 
-                                   ?next(Hash), element(Arc,Table), 
-                                   Depth-1, Count),
-    {setelement(Arc,Table,SubNode), NewCount}.
-
-insert(Key, Value, [{Key,_}|Pairs], Acc, Count) ->
-    {[{Key,Value}|Acc]++Pairs, Count};
-insert(Key, Value, [], Acc, Count) ->
+list_insert(Key, Value, [{Key,_}|Entries], Acc, Count) ->
+    {[{Key,Value}|Acc]++Entries, Count};
+list_insert(Key, Value, [], Acc, Count) ->
     {[{Key,Value}|Acc], Count+1};
-insert(Key, Value, [Head|Pairs], Acc, Count) ->
-    insert(Key, Value, Pairs, [Head|Acc], Count).
+list_insert(Key, Value, [Head|Entries], Acc, Count) ->
+    list_insert(Key, Value, Entries, [Head|Acc], Count).
+
+resize(#hashtrie{root=Tab,root_depth=Dep,next_resize_trigger=Size}=Trie) ->
+    NewTab = resize_impl(Tab, Dep, Dep+1),
+    Trie#hashtrie{root=NewTab, root_depth=Dep+1, next_resize_trigger=Size*16}.
+
+resize_impl(Tab, 0, N) ->
+    {?relocate(01,Tab,N),?relocate(02,Tab,N),?relocate(03,Tab,N),?relocate(04,Tab,N),
+     ?relocate(05,Tab,N),?relocate(06,Tab,N),?relocate(07,Tab,N),?relocate(08,Tab,N),
+     ?relocate(09,Tab,N),?relocate(10,Tab,N),?relocate(11,Tab,N),?relocate(12,Tab,N),
+     ?relocate(13,Tab,N),?relocate(14,Tab,N),?relocate(15,Tab,N),?relocate(16,Tab,N)};
+resize_impl(Tab, Dep, N) ->
+    {?resize(01,Tab,Dep,N),?resize(02,Tab,Dep,N),?resize(03,Tab,Dep,N),?resize(04,Tab,Dep,N),
+     ?resize(05,Tab,Dep,N),?resize(06,Tab,Dep,N),?resize(07,Tab,Dep,N),?resize(08,Tab,Dep,N),
+     ?resize(09,Tab,Dep,N),?resize(10,Tab,Dep,N),?resize(11,Tab,Dep,N),?resize(12,Tab,Dep,N),
+     ?resize(13,Tab,Dep,N),?resize(14,Tab,Dep,N),?resize(15,Tab,Dep,N),?resize(16,Tab,Dep,N)}.
+
+relocate_entries(Entries, N) ->
+    lists:foldl(fun({K,_}=Entry, NewTab) ->
+                        Idx = ?nth_index(?hash(K),N),
+                        setelement(Idx,NewTab,[Entry|element(Idx,NewTab)])
+                end,
+                ?EMPTY_TABLE,
+                Entries).
+
+remove(Key, #hashtrie{root=Tab, root_depth=Dep, count=Cnt}=Trie) ->
+    {NewTab,NewCnt} = remove_impl(Key, ?hash(Key), Tab, Dep, Cnt),
+    Trie#hashtrie{root=NewTab,count=NewCnt}.
+
+remove_impl(Key, Hash, Tab, 0, Cnt) ->
+    Idx = ?index(Hash),
+    {NewEntries, NewCnt} = list_remove(Key, element(Idx,Tab), [], Cnt),
+    {setelement(Idx,Tab,NewEntries), NewCnt};
+remove_impl(Key, Hash, Tab, Dep, Cnt) ->
+    Idx = ?index(Hash),
+    {NewSubTab, NewCnt} = remove_impl(Key, ?next(Hash), element(Idx,Tab), Dep-1, Cnt),
+    {setelement(Idx,Tab,NewSubTab), NewCnt}.
+
+list_remove(_, [], Acc, Cnt)                  -> {Acc, Cnt};
+list_remove(Key, [{Key,_}|Entries], Acc, Cnt) -> {Acc++Entries, Cnt-1};
+list_remove(Key, [Head|Entries], Acc, Cnt)    -> list_remove(Key, Entries, [Head|Acc], Cnt).
+
+foreach(Fn, #hashtrie{root=Tab, root_depth=Dep}) ->
+    foreach_impl(Fn, Tab, 1, Dep).
+
+foreach_impl(Fn, Entries, _, -1) ->
+    lists:foreach(Fn, Entries);
+foreach_impl(_, _, 33, _) -> 
+    done;
+foreach_impl(Fn, Tab, Idx, Dep) ->
+    foreach_impl(Fn, element(Idx, Tab), 1, Dep-1),
+    foreach_impl(Fn, Tab, Idx+1, Dep).
