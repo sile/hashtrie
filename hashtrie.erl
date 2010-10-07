@@ -1,7 +1,9 @@
+%% File : hashtrie.erl
 -module(hashtrie).
 -export([new/0, size/1, find/2, store/3, remove/2, foreach/2]).
 -vsn("0.0.3").
 
+%% define
 -define(EMPTY_TABLE, {[], [], [], [], [], [], [], [],[], [], [], [], [], [], [], []}).
 -define(hash(Key), erlang:phash2(Key)).
 -define(index(HashCode), ((HashCode band 2#1111)+1)).
@@ -10,25 +12,35 @@
 -define(resize(Idx,Tab,Dep,N), resize_impl(element(Idx, Tab), Dep-1,N)).
 -define(relocate(Idx,Tab,N), relocate_entries(element(Idx, Tab), N)).
 
--record(hashtrie, {count = 0,
-                   next_resize_trigger = 16*4,
-                   root_depth = 0,
-                   root = ?EMPTY_TABLE}).
+%% record: hashtrie
+-record(hashtrie, {count = 0                  :: integer(),
+                   next_resize_trigger = 16*4 :: integer(),
+                   root_depth = 0             :: integer(),
+                   root = ?EMPTY_TABLE        :: tuple() }).
+-opaque hashtrie() :: #hashtrie{}.
 
+%% function: new
+-spec new() -> hashtrie().
 new() ->
     #hashtrie{}. 
 
+%% function: size
+-spec size(hashtrie()) -> integer().
 size(#hashtrie{count=Cnt}) ->
     Cnt.
 
+%% function: find
+-spec find(any(), hashtrie()) -> {value,any()} | false.
 find(Key, #hashtrie{root=Tab, root_depth=Dep}) ->
-    lists:keyfind(Key, 1, find_candidates(?hash(Key), Tab, Dep)).
+    lists:keysearch(Key, 1, find_candidates(?hash(Key), Tab, Dep)).
 
 find_candidates(Hash, Tab, 0) ->
     element(?index(Hash), Tab);
 find_candidates(Hash, Tab, Dep) ->
     find_candidates(?next(Hash), element(?index(Hash),Tab), Dep-1).
 
+%% function: store
+-spec store(any(), any(), hashtrie()) -> hashtrie().
 store(Key, Value, #hashtrie{count=Cnt,next_resize_trigger=Cnt}=Trie) ->
     store(Key, Value, resize(Trie));
 store(Key, Value, #hashtrie{root=Tab, root_depth=Dep, count=Cnt}=Trie) ->
@@ -74,6 +86,8 @@ relocate_entries(Entries, N) ->
                 ?EMPTY_TABLE,
                 Entries).
 
+%% function: remove
+-spec remove(any(), hashtrie()) -> hashtrie().
 remove(Key, #hashtrie{root=Tab, root_depth=Dep, count=Cnt}=Trie) ->
     {NewTab,NewCnt} = remove_impl(Key, ?hash(Key), Tab, Dep, Cnt),
     Trie#hashtrie{root=NewTab,count=NewCnt}.
@@ -91,6 +105,8 @@ list_remove(_, [], Acc, Cnt)                  -> {Acc, Cnt};
 list_remove(Key, [{Key,_}|Entries], Acc, Cnt) -> {Acc++Entries, Cnt-1};
 list_remove(Key, [Head|Entries], Acc, Cnt)    -> list_remove(Key, Entries, [Head|Acc], Cnt).
 
+%% function: foreach
+-spec foreach(function(), hashtrie()) -> done.
 foreach(Fn, #hashtrie{root=Tab, root_depth=Dep}) ->
     foreach_impl(Fn, Tab, 1, Dep).
 

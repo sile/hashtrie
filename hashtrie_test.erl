@@ -1,7 +1,8 @@
 -module(hashtrie_test).
 -export([gen_int_entries/2, gen_str_entries/1]).
--export([store_entries/3, store_loop/4, find_entries/3]).
+-export([store_entries/2, store_entries/3, store_loop/4, find_entries/3]).
 -export([store_time/2, store_time/3, find_time/3]).
+-export([store_memory/2]).
 
 gen_int_entries(Start,End) ->
     lists:map(fun (X) -> {X,X} end, lists:seq(Start,End-1)).
@@ -23,6 +24,13 @@ store_entries(Entries, InitObj, StoreFn) ->
                 InitObj,
                 Entries).
 
+store_entries(Entries, hashtrie) ->
+    hashtrie_test:store_entries(Entries, hashtrie:new(), fun hashtrie:store/3);
+store_entries(Entries, dict) ->
+    hashtrie_test:store_entries(Entries, dict:new(), fun dict:store/3);
+store_entries(Entries, gb_trees) ->
+    hashtrie_test:store_entries(Entries, gb_trees:empty(), fun gb_trees:insert/3).
+
 store_loop(_, _, _, 0) -> done;
 store_loop(Entries, InitObj, StoreFn, LoopCount) ->
     store_entries(Entries, InitObj, StoreFn),
@@ -40,15 +48,8 @@ find_entries(Entries, Obj, FindFn) ->
 
 extract_time({Time,_}) -> Time.
 
-store_time(Entries, hashtrie) ->
-    extract_time(timer:tc(?MODULE, store_entries, 
-                          [Entries, hashtrie:new(), fun hashtrie:store/3]));
-store_time(Entries, dict) ->
-    extract_time(timer:tc(?MODULE, store_entries, 
-                          [Entries, dict:new(), fun dict:store/3]));
-store_time(Entries, gb_trees) ->
-    extract_time(timer:tc(?MODULE, store_entries, 
-                          [Entries, gb_trees:empty(), fun gb_trees:insert/3])).
+store_time(Entries, MapType) ->
+    extract_time(timer:tc(?MODULE, store_entries, [Entries, MapType])). 
 
 store_time(Entries, hashtrie, LoopCount) ->
     extract_time(timer:tc(?MODULE, store_loop, 
@@ -70,17 +71,36 @@ find_time(Entries, Tree, gb_trees) ->
     extract_time(timer:tc(?MODULE, find_entries,
                           [Entries, Tree, fun gb_trees:lookup/2])).
 
-%% Words = hashtrie_test:gen_str_entries("/home/ohta/data/text/ipa.keys"), length(Words).
-%% Words = hashtrie_test:gen_int_entries(0,10).
+store_memory(Entries, MapType) ->
+    erlang:garbage_collect(),
+    erlang:garbage_collect(),
+    Pre = erlang:memory(processes),
+    Map = store_entries(Entries, MapType),
+    Post = erlang:memory(processes),
+    Post-Pre.
 
-%% hashtrie_test:store_time(Words, hashtrie).
-%% hashtrie_test:store_time(Words, dict).
-%% hashtrie_test:store_time(Words, gb_trees).
+%% Entries = hashtrie_test:gen_int_entries(0,100000).
+%% Entries = hashtrie_test:gen_str_entries("/hoge/hoge.txt").
 
-%% hashtrie_test:store_time(Words, hashtrie, 10).
-%% hashtrie_test:store_time(Words, dict, 10).
-%% hashtrie_test:store_time(Words, gb_trees, 10).
+%% hashtrie_test:store_time(Entries, hashtrie).
+%% hashtrie_test:store_time(Entries, dict).
+%% hashtrie_test:store_time(Entries, gb_trees).
 
-%% hashtrie_test:find_time(Words, T, hashtrie).
-%% hashtrie_test:find_time(Words, D, dict).
-%% hashtrie_test:find_time(Words, G, gb_trees).
+%% hashtrie_test:store_time(Entries, hashtrie, 10).
+%% hashtrie_test:store_time(Entries, dict, 10).
+%% hashtrie_test:store_time(Entries, gb_trees, 10).
+
+%% hashtrie_test:store_memory(Entries, hashtrie).
+%% hashtrie_test:store_memory(Entries, dict).
+%% hashtrie_test:store_memory(Entries, gb_trees).
+
+%% T = hashtrie_test:store_entries(Entries, hashtrie).
+%% D = hashtrie_test:store_entries(Entries, dict).
+%% G = hashtrie_test:store_entries(Entries, gb_trees).
+
+%% hashtrie_test:find_time(Entries, T, hashtrie).
+%% hashtrie_test:find_time(Entries, D, dict).
+%% hashtrie_test:find_time(Entries, G, gb_trees).
+
+
+
