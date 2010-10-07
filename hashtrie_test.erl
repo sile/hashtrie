@@ -75,7 +75,7 @@ store_memory(Entries, MapType) ->
     erlang:garbage_collect(),
     erlang:garbage_collect(),
     Pre = erlang:memory(processes),
-    Map = store_entries(Entries, MapType),
+    _Map = store_entries(Entries, MapType),
     Post = erlang:memory(processes),
     Post-Pre.
 
