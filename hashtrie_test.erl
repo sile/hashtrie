@@ -1,8 +1,7 @@
 -module(hashtrie_test).
 -export([gen_int_entries/2, gen_str_entries/1]).
--export([store_entries/2, store_loop/2, find_entries/2]).
--export([dict_store_entries/2, dict_store_loop/2, dict_find_entries/2]).
--export([gbtree_store_entries/2, gbtree_store_loop/2, gbtree_find_entries/2]).
+-export([store_entries/3, store_loop/4, find_entries/3]).
+-export([store_time/2, store_time/3, find_time/3]).
 
 gen_int_entries(Start,End) ->
     lists:map(fun (X) -> {X,X} end, lists:seq(Start,End-1)).
@@ -19,78 +18,69 @@ read_lines(In, Lines, LineNum) ->
         eof -> lists:reverse(Lines)
     end.
 
-store_entries(Entries, Trie) ->
-    lists:foldl(fun ({K,V},T) -> hashtrie:store(K, V, T) end,
-                Trie,
+store_entries(Entries, InitObj, StoreFn) ->
+    lists:foldl(fun ({K,V},T) -> StoreFn(K, V, T) end,
+                InitObj,
                 Entries).
 
-store_loop(_, 0) -> done;
-store_loop(Entries, LoopCount) ->
-    store_entries(Entries, hashtrie:new()),
-    store_loop(Entries, LoopCount-1).
+store_loop(_, _, _, 0) -> done;
+store_loop(Entries, InitObj, StoreFn, LoopCount) ->
+    store_entries(Entries, InitObj, StoreFn),
+    store_loop(Entries, InitObj, StoreFn, LoopCount-1).
 
-find_entries(Entries, Trie) ->
+find_entries(Entries, Obj, FindFn) ->
     lists:foldl(fun ({K,_}, Cnt) -> 
-                        case hashtrie:find(K, Trie) of
-                            {K,_} -> Cnt+1;
-                            false -> Cnt
+                        case FindFn(K, Obj) of
+                            {_,_} -> Cnt+1;
+                            _     -> Cnt
                         end
                 end,
                 0,
                 Entries).
 
-dict_store_entries(Entries, Dict) ->
-    lists:foldl(fun ({K,V},D) -> dict:store(K, V, D) end,
-                Dict,
-                Entries).
+extract_time({Time,_}) -> Time.
 
-dict_find_entries(Entries, Dict) ->
-    lists:foldl(fun ({K,_}, Cnt) -> 
-                        case dict:find(K, Dict) of
-                            {ok,_} -> Cnt+1;
-                            error -> Cnt
-                        end
-                end,
-                0,
-                Entries).
+store_time(Entries, hashtrie) ->
+    extract_time(timer:tc(?MODULE, store_entries, 
+                          [Entries, hashtrie:new(), fun hashtrie:store/3]));
+store_time(Entries, dict) ->
+    extract_time(timer:tc(?MODULE, store_entries, 
+                          [Entries, dict:new(), fun dict:store/3]));
+store_time(Entries, gb_trees) ->
+    extract_time(timer:tc(?MODULE, store_entries, 
+                          [Entries, gb_trees:empty(), fun gb_trees:insert/3])).
 
-dict_store_loop(_, 0) -> done;
-dict_store_loop(Entries, LoopCount) ->
-    dict_store_entries(Entries, dict:new()),
-    dict_store_loop(Entries, LoopCount-1).
+store_time(Entries, hashtrie, LoopCount) ->
+    extract_time(timer:tc(?MODULE, store_loop, 
+                          [Entries, hashtrie:new(), fun hashtrie:store/3, LoopCount]));
+store_time(Entries, dict, LoopCount) ->
+    extract_time(timer:tc(?MODULE, store_loop, 
+                          [Entries, dict:new(), fun dict:store/3, LoopCount]));
+store_time(Entries, gb_trees, LoopCount) ->
+    extract_time(timer:tc(?MODULE, store_loop, 
+                          [Entries, gb_trees:empty(), fun gb_trees:insert/3, LoopCount])).
 
-gbtree_store_entries(Entries, Tree) ->
-    lists:foldl(fun ({K,V},T) -> gb_trees:insert(K, V, T) end,
-                Tree,
-                Entries).
-
-gbtree_find_entries(Entries, Tree) ->
-    lists:foldl(fun ({K,_}, Cnt) -> 
-                        case gb_trees:lookup(K, Tree) of
-                            {value,_} -> Cnt+1;
-                            none -> Cnt
-                        end
-                end,
-                0,
-                Entries).
-
-gbtree_store_loop(_, 0) -> done;
-gbtree_store_loop(Entries, LoopCount) ->
-    gbtree_store_entries(Entries, gb_trees:empty()),
-    gbtree_store_loop(Entries, LoopCount-1).
+find_time(Entries, Trie, hashtrie) ->
+    extract_time(timer:tc(?MODULE, find_entries,
+                          [Entries, Trie, fun hashtrie:find/2]));
+find_time(Entries, Dict, dict) ->
+    extract_time(timer:tc(?MODULE, find_entries,
+                          [Entries, Dict, fun dict:find/2]));
+find_time(Entries, Tree, gb_trees) ->
+    extract_time(timer:tc(?MODULE, find_entries,
+                          [Entries, Tree, fun gb_trees:lookup/2])).
 
 %% Words = hashtrie_test:gen_str_entries("/home/ohta/data/text/ipa.keys"), length(Words).
 %% Words = hashtrie_test:gen_int_entries(0,10).
 
-%% f(T), {Time,T} = timer:tc(hashtrie_test, store_entries, [Words, hashtrie:new()]), Time. f(Time).
-%% timer:tc(hashtrie_test, store_loop, [Words, 10000]).
-%% {Time,_} = timer:tc(hashtrie_test, find_entries, [Words, T]), Time. f(Time).
+%% hashtrie_test:store_time(Words, hashtrie).
+%% hashtrie_test:store_time(Words, dict).
+%% hashtrie_test:store_time(Words, gb_trees).
 
-%% f(D), {Time,D} = timer:tc(hashtrie_test, dict_store_entries, [Words, dict:new()]), Time. f(Time).
-%% timer:tc(hashtrie_test, dict_store_loop, [Words, 10000]).
-%% {Time,_} = timer:tc(hashtrie_test, dict_find_entries, [Words, D]), Time. f(Time).
+%% hashtrie_test:store_time(Words, hashtrie, 10).
+%% hashtrie_test:store_time(Words, dict, 10).
+%% hashtrie_test:store_time(Words, gb_trees, 10).
 
-%% f(G), {Time,G} = timer:tc(hashtrie_test, gbtree_store_entries, [Words, gb_trees:empty()]), Time. f(Time).
-%% timer:tc(hashtrie_test, gbtree_store_loop, [Words, 10000]).
-%% {Time,_} = timer:tc(hashtrie_test, gbtree_find_entries, [Words, G]), Time. f(Time).
-
+%% hashtrie_test:find_time(Words, T, hashtrie).
+%% hashtrie_test:find_time(Words, D, dict).
+%% hashtrie_test:find_time(Words, G, gb_trees).
