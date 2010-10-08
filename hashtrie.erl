@@ -3,7 +3,7 @@
 -export([new/0, size/1, find/2, store/3, remove/2, foreach/2]).
 -vsn("0.0.3").
 
-%% define
+%% macro
 -define(EMPTY_TABLE, {[], [], [], [], [], [], [], [],[], [], [], [], [], [], [], []}).
 -define(hash(Key), erlang:phash2(Key)).
 -define(index(HashCode), ((HashCode band 2#1111)+1)).

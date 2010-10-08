@@ -13,9 +13,9 @@ gen_str_entries(Filepath) ->
 
 read_lines(In, Lines, LineNum) ->
     case file:read_line(In) of
-        {ok, Line} -> read_lines(In,
-                                 [{string:strip(Line,right,$\n),LineNum}|Lines], 
-                                 LineNum+1);
+        {ok, Line} -> 
+            BinaryLine = list_to_binary(string:strip(Line,right,$\n)),
+            read_lines(In, [{BinaryLine,LineNum}|Lines], LineNum+1);
         eof -> lists:reverse(Lines)
     end.
 
@@ -73,34 +73,49 @@ find_time(Entries, Tree, gb_trees) ->
 
 store_memory(Entries, MapType) ->
     erlang:garbage_collect(),
-    erlang:garbage_collect(),
-    Pre = erlang:memory(processes),
+    Before = erlang:memory(processes),
     _Map = store_entries(Entries, MapType),
-    Post = erlang:memory(processes),
-    Post-Pre.
+    After = erlang:memory(processes),
+    After-Before.
 
-%% Entries = hashtrie_test:gen_int_entries(0,100000).
-%% Entries = hashtrie_test:gen_str_entries("/hoge/hoge.txt").
+%% Num10 = hashtrie_test:gen_int_entries(0, 10).
+%% Num100 = hashtrie_test:gen_int_entries(0, 100).
+%% Num100000 = hashtrie_test:gen_int_entries(0, 100000).
+%% Str100000 = hashtrie_test:gen_str_entries("words.100000").
+%% Str300000 = hashtrie_test:gen_str_entries("words").
 
-%% hashtrie_test:store_time(Entries, hashtrie).
-%% hashtrie_test:store_time(Entries, dict).
-%% hashtrie_test:store_time(Entries, gb_trees).
+%% hashtrie_test:store_time(Num10, hashtrie, 10000).
+%% hashtrie_test:store_time(Num10, dict, 10000).    
+%% hashtrie_test:store_time(Num10, gb_trees, 10000).
 
-%% hashtrie_test:store_time(Entries, hashtrie, 10).
-%% hashtrie_test:store_time(Entries, dict, 10).
-%% hashtrie_test:store_time(Entries, gb_trees, 10).
+%% hashtrie_test:store_time(Num100, hashtrie, 1000).
+%% hashtrie_test:store_time(Num100, dict, 1000).    
+%% hashtrie_test:store_time(Num100, gb_trees, 1000).
 
-%% hashtrie_test:store_memory(Entries, hashtrie).
-%% hashtrie_test:store_memory(Entries, dict).
-%% hashtrie_test:store_memory(Entries, gb_trees).
+%% hashtrie_test:store_time(Num100000, hashtrie).
+%% hashtrie_test:store_time(Num100000, dict).    
+%% hashtrie_test:store_time(Num100000, gb_trees).
 
-%% T = hashtrie_test:store_entries(Entries, hashtrie).
-%% D = hashtrie_test:store_entries(Entries, dict).
-%% G = hashtrie_test:store_entries(Entries, gb_trees).
+%% hashtrie_test:store_time(Str100000, hashtrie).
+%% hashtrie_test:store_time(Str100000, dict).
+%% hashtrie_test:store_time(Str100000, gb_trees).
 
-%% hashtrie_test:find_time(Entries, T, hashtrie).
-%% hashtrie_test:find_time(Entries, D, dict).
-%% hashtrie_test:find_time(Entries, G, gb_trees).
+%% hashtrie_test:store_memory(Str300000, hashtrie).
+%% hashtrie_test:store_memory(Str300000, dict).
+%% hashtrie_test:store_memory(Str300000, gb_trees).
 
+%% Tn = hashtrie_test:store_entries(Num100000, hashtrie), done.
+%% Dn = hashtrie_test:store_entries(Num100000, dict), done.
+%% Gn = hashtrie_test:store_entries(Num100000, gb_trees), done.
 
+%% Ts = hashtrie_test:store_entries(Str100000, hashtrie), done.
+%% Ds = hashtrie_test:store_entries(Str100000, dict), done.
+%% Gs = hashtrie_test:store_entries(Str100000, gb_trees), done.
 
+%% hashtrie_test:find_time(Num100000, Tn, hashtrie).
+%% hashtrie_test:find_time(Num100000, Dn, dict).    
+%% hashtrie_test:find_time(Num100000, Gn, gb_trees).
+
+%% hashtrie_test:find_time(Str300000, Ts, hashtrie).
+%% hashtrie_test:find_time(Str300000, Ds, dict).    
+%% hashtrie_test:find_time(Str300000, Gs, gb_trees).
