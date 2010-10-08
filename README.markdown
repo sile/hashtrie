@@ -41,4 +41,4 @@
     Fnのシグネチャは、Fn({Key,Value})->any()。
 
 ## 参考
-* [実装概略や計時結果など](http://d.hatena.ne.jp/sile/20101008/)
+* [実装概略や計時結果など](http://d.hatena.ne.jp/sile/20101008/1286558755)
