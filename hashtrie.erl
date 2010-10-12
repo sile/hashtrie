@@ -1,7 +1,7 @@
 %% File : hashtrie.erl
 -module(hashtrie).
 -export([new/0, size/1, find/2, store/3, remove/2, foreach/2]).
--vsn("0.0.3").
+-vsn("0.0.4").
 
 %% macro
 -define(EMPTY_TABLE, {[], [], [], [], [], [], [], [],[], [], [], [], [], [], [], []}).
@@ -32,7 +32,10 @@ size(#hashtrie{count=Cnt}) ->
 %% function: find
 -spec find(any(), hashtrie()) -> {value,any()} | false.
 find(Key, #hashtrie{root=Tab, root_depth=Dep}) ->
-    lists:keysearch(Key, 1, find_candidates(?hash(Key), Tab, Dep)).
+    case lists:keysearch(Key, 1, find_candidates(?hash(Key), Tab, Dep)) of
+        {value, {_,Value}} -> {value, Value};
+        _                  -> false
+    end.
 
 find_candidates(Hash, Tab, 0) ->
     element(?index(Hash), Tab);
