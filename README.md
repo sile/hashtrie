@@ -45,6 +45,14 @@
     キーに該当する要素をHashTrie内から(もし存在するなら)削除する。
     返り値は、要素削除後のHashTrieインスタンス。
 
+#### hashtrie:fold(Fn, Initial, Hashtrie) -> Result
+
+    要素の畳み込みを行う。
+    畳み込み:
+     1] 初めの要素に対して Fn(Key, Value, Initial) を適用する
+     2] 二番目以降の要素に対してFn(Key, Value, 一つ前の適用結果)を実行する
+     3] 一番最後に要素に対する適用結果が Result となり、fold関数呼び出し元に返される
+
 #### hashtrie:foreach(Fn, HashTrie) -> ok
 
     HashTrieに格納されている全要素を走査し、各要素に対して、Fn関数を適用する。

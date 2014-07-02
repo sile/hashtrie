@@ -15,14 +15,18 @@
          fetch/2, fetch/3,
          store/3,
          erase/2,
-         %% TODO: fold/3, to_list/1, from_list/1,
+         fold/3,
+         %% TODO: to_list/1, from_list/1,
          foreach/2
         ]).
 
 -export_type([
               hashtrie/0, hashtrie/2,
               key/0,
-              value/0
+              value/0,
+              fold_fun/0,
+              acc/0,
+              foreach_fun/0
              ]).
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -44,16 +48,21 @@
 -opaque hashtrie()             :: #hashtrie{}.
 -opaque hashtrie(_Key, _Value) :: #hashtrie{}.
 
--type key()      :: term().
--type value()    :: term().
--type entry()    :: {key(), value()}.
--type hashcode() :: non_neg_integer().
--type index()    :: non_neg_integer().
--type count()    :: non_neg_integer().
--type depth()    :: non_neg_integer().
--type table()    :: {child(), child(), child(), child(), child(), child(), child(), child(),
-                     child(), child(), child(), child(), child(), child(), child(), child()}.
--type child()    :: table() | [entry()].
+-type key()        :: term().
+-type value()      :: term().
+-type entry()      :: {key(), value()}.
+-type hashcode()   :: non_neg_integer().
+-type index()      :: 1..16.
+-type table_size() :: 17.
+-type count()      :: non_neg_integer().
+-type depth()      :: non_neg_integer().
+-type table()      :: {child(), child(), child(), child(), child(), child(), child(), child(),
+                       child(), child(), child(), child(), child(), child(), child(), child()}.
+-type child()      :: table() | [entry()].
+
+-type acc() :: term().
+-type fold_fun()    :: fun ((key(), value(), acc()) -> acc()).
+-type foreach_fun() :: fun ((key(), value()) -> any()).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported Functions
@@ -97,9 +106,16 @@ erase(Key, #hashtrie{root=Tab, root_depth=Dep, count=Cnt}=Trie) ->
     {NewTab,NewCnt} = erase_impl(Key, ?hash(Key), Tab, Dep, Cnt),
     Trie#hashtrie{root=NewTab,count=NewCnt}.
 
--spec foreach(function(), hashtrie()) -> ok.
-foreach(Fn, #hashtrie{root=Tab, root_depth=Dep}) ->
-    foreach_impl(Fn, Tab, 1, Dep).
+-spec fold(fold_fun(), acc(), hashtrie()) -> acc().
+fold(Fun, Initial, #hashtrie{root=Tab, root_depth=Dep}) ->
+    fold_impl(Fun, Tab, 1, Dep, Initial).
+    
+-spec foreach(foreach_fun(), hashtrie()) -> ok.
+foreach(Fun, Trie) ->
+    fold(fun (Key, Value, _Acc) ->
+                 _ = Fun(Key, Value),
+                 ok
+         end, ok, Trie).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %% Internal Functions
@@ -166,12 +182,14 @@ erase_impl(Key, Hash, Tab, Dep, Cnt) ->
     {NewSubTab, NewCnt} = erase_impl(Key, ?next(Hash), element(Idx,Tab), Dep-1, Cnt),
     {setelement(Idx,Tab,NewSubTab), NewCnt}.
 
--spec foreach_impl(function(), table(), index(), depth()) -> ok;
-                  (function(), [entry()], index(), -1)    -> ok.
-foreach_impl(Fn, Entries, _, -1) ->
-    lists:foreach(Fn, Entries);
-foreach_impl(_, _, 33, _) -> 
-    ok;
-foreach_impl(Fn, Tab, Idx, Dep) ->
-    foreach_impl(Fn, element(Idx, Tab), 1, Dep-1),
-    foreach_impl(Fn, Tab, Idx+1, Dep).
+-spec fold_impl(fold_fun(), table(), index() | table_size(), depth(), acc()) -> acc();
+               (fold_fun(), [entry()], index(), -1, acc())                   -> acc().
+fold_impl(Fun, Entries, _, -1, Acc) ->
+    lists:foldl(Fun, Acc, Entries);
+fold_impl(_, _, 17, _, Acc) ->
+    Acc;
+fold_impl(Fun, Tab, Idx, Dep, Acc0) ->
+    Acc1 = fold_impl(Fun, element(Idx, Tab), 1, Dep - 1, Acc0),
+    Acc2 = fold_impl(Fun, Tab, Idx + 1, Dep, Acc1),
+    Acc2.
+
