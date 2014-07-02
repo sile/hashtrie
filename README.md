@@ -23,6 +23,16 @@
     キーに紐付く値をHashTrieから検索する。
     該当の値が存在する場合は{ok, 値}を、存在しない場合はerrorを返す。
 
+#### hashtrie:fetch(Key, Hashtrie) -> Value
+
+    キーに紐付く値をHashTrieから検索する。
+    該当の値が存在しない場合はエラーが送出される。
+
+#### hashtrie:fetch(Key, Hashtrie, Default) -> Value
+
+    キーに紐付く値をHashTrieから検索する。
+    該当の値が存在しない場合は Default が返される
+
 #### hashtrie:store(Key, Value, HashTrie) -> hashtrie()
 
     要素(キーとそれに紐付く値)をHashTrieに格納する。

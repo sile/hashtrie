@@ -3,6 +3,8 @@
 %% @doc Hask link Trie
 -module(hashtrie).
 
+-compile(inline).
+
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported API
 %%----------------------------------------------------------------------------------------------------------------------
@@ -10,9 +12,10 @@
          new/0,
          size/1,
          find/2,
+         fetch/2, fetch/3,
          store/3,
          erase/2,
-         %% TODO: fold/3,
+         %% TODO: fold/3, to_list/1, from_list/1,
          foreach/2
         ]).
 
@@ -68,6 +71,20 @@ find(Key, #hashtrie{root=Tab, root_depth=Dep}) ->
         {_, Value} -> {ok, Value}
     end.
 
+-spec fetch(key(), hashtrie()) -> value().
+fetch(Key, Trie) -> 
+    case find(Key, Trie) of
+        error       -> error({no_such_key, Key}, [Key, Trie]);
+        {ok, Value} -> Value
+    end.
+
+-spec fetch(key(), hashtrie(), value()) -> value().
+fetch(Key, Trie, Default) -> 
+    case find(Key, Trie) of
+        error       -> Default;
+        {ok, Value} -> Value
+    end.
+            
 -spec store(key(), value(), hashtrie()) -> hashtrie().
 store(Key, Value, #hashtrie{count=Cnt,next_resize_trigger=Cnt}=Trie) ->
     store(Key, Value, resize(Trie));
