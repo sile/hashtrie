@@ -18,10 +18,10 @@
 
     HashTrieに格納されている要素数を返す。
 
-#### hashtrie:find(Key, HashTrie) -> {value,any()} | false
+#### hashtrie:find(Key, HashTrie) -> {ok, Value} | error
 
     キーに紐付く値をHashTrieから検索する。
-    該当の値が存在する場合は{value, 値}を、存在しない場合はfalseを返す。
+    該当の値が存在する場合は{ok, 値}を、存在しない場合はerrorを返す。
 
 #### hashtrie:store(Key, Value, HashTrie) -> hashtrie()
 

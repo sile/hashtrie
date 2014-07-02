@@ -61,11 +61,11 @@ new() -> #hashtrie{}.
 -spec size(hashtrie()) -> non_neg_integer().
 size(#hashtrie{count=Cnt}) -> Cnt.
 
--spec find(key(), hashtrie()) -> {value,any()} | false. % TODO: 返り値変更
+-spec find(key(), hashtrie()) -> {ok, value()} | error.
 find(Key, #hashtrie{root=Tab, root_depth=Dep}) ->
     case lists:keyfind(Key, 1, find_candidates(?hash(Key), Tab, Dep)) of
-        false -> false;
-        {_, Value} -> {value, Value}
+        false      -> error;
+        {_, Value} -> {ok, Value}
     end.
 
 -spec store(key(), value(), hashtrie()) -> hashtrie().
