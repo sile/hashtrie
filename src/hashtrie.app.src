@@ -1,0 +1,12 @@
+%%% vim: set ft=erlang : -*- erlang -*-
+{application, hashtrie,
+ [
+  {description, "Hash like Trie"},
+  {vsn, git},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.

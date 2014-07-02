@@ -1,6 +1,7 @@
 %% File : hashtrie.erl
 -module(hashtrie).
 -export([new/0, size/1, find/2, store/3, remove/2, foreach/2]).
+-export_type([hashtrie/0]).
 -vsn("0.0.5").
 
 %% macro
