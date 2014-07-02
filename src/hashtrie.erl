@@ -120,6 +120,7 @@ foreach(Fun, Trie) ->
 
 -spec to_list(hashtrie()) -> [{key(), value()}].
 to_list(Trie) ->
+    %% TODO: optimize
     fold(fun (Key, Value, Acc) -> [{Key, Value} | Acc] end, [], Trie).
 
 -spec from_list([{key(), value()}]) -> hashtrie().
@@ -196,8 +197,8 @@ erase_impl(Key, Hash, Tab, Dep, Cnt) ->
 
 -spec fold_impl(fold_fun(), table(), index() | table_size(), depth(), acc()) -> acc();
                (fold_fun(), [entry()], index(), -1, acc())                   -> acc().
-fold_impl(Fun, Entries, _, -1, Acc) ->
-    lists:foldl(Fun, Acc, Entries);
+fold_impl(Fun, Entries, _, -1, Acc0) ->
+    lists:foldl(fun ({K, V}, Acc1) -> Fun(K, V, Acc1) end, Acc0, Entries);
 fold_impl(_, _, 17, _, Acc) ->
     Acc;
 fold_impl(Fun, Tab, Idx, Dep, Acc0) ->

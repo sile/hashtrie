@@ -40,7 +40,7 @@
     キーが存在しない場合は、キーと値のペア(要素)が新規に追加される。
     要素格納後のHashTrieインスタンスを返す。
 
-#### hashtrie:remove(Key, HashTrie) -> hashtrie()
+#### hashtrie:erase(Key, HashTrie) -> hashtrie()
 
     キーに該当する要素をHashTrie内から(もし存在するなら)削除する。
     返り値は、要素削除後のHashTrieインスタンス。
