@@ -11,7 +11,7 @@
          size/1,
          find/2,
          store/3,
-         remove/2,
+         erase/2,
          %% TODO: fold/3,
          foreach/2
         ]).
@@ -75,9 +75,9 @@ store(Key, Value, #hashtrie{root=Tab, root_depth=Dep, count=Cnt}=Trie) ->
     {NewTab, NewCnt} = store_impl(Key, Value, ?hash(Key), Tab, Dep, Cnt),
     Trie#hashtrie{root=NewTab, count=NewCnt}.
 
--spec remove(key(), hashtrie()) -> hashtrie().
-remove(Key, #hashtrie{root=Tab, root_depth=Dep, count=Cnt}=Trie) ->
-    {NewTab,NewCnt} = remove_impl(Key, ?hash(Key), Tab, Dep, Cnt),
+-spec erase(key(), hashtrie()) -> hashtrie().
+erase(Key, #hashtrie{root=Tab, root_depth=Dep, count=Cnt}=Trie) ->
+    {NewTab,NewCnt} = erase_impl(Key, ?hash(Key), Tab, Dep, Cnt),
     Trie#hashtrie{root=NewTab,count=NewCnt}.
 
 -spec foreach(function(), hashtrie()) -> ok.
@@ -137,20 +137,17 @@ relocate_entries(Entries, N) ->
                 ?EMPTY_TABLE,
                 Entries).
 
--spec remove_impl(key(), hashcode(), table(), depth(), count()) -> {table(), count()}.
-remove_impl(Key, Hash, Tab, 0, Cnt) ->
+-spec erase_impl(key(), hashcode(), table(), depth(), count()) -> {table(), count()}.
+erase_impl(Key, Hash, Tab, 0, Cnt) ->
     Idx = ?index(Hash),
-    {NewEntries, NewCnt} = list_remove(Key, element(Idx,Tab), [], Cnt),
-    {setelement(Idx,Tab,NewEntries), NewCnt};
-remove_impl(Key, Hash, Tab, Dep, Cnt) ->
+    case lists:keytake(Key, 1, element(Idx, Tab)) of
+        false               -> {Tab, Cnt};
+        {value, _, Entries} -> {setelement(Idx, Tab, Entries), Cnt - 1}
+    end;
+erase_impl(Key, Hash, Tab, Dep, Cnt) ->
     Idx = ?index(Hash),
-    {NewSubTab, NewCnt} = remove_impl(Key, ?next(Hash), element(Idx,Tab), Dep-1, Cnt),
+    {NewSubTab, NewCnt} = erase_impl(Key, ?next(Hash), element(Idx,Tab), Dep-1, Cnt),
     {setelement(Idx,Tab,NewSubTab), NewCnt}.
-
--spec list_remove(key(), [entry()], [entry()], count()) -> {[entry()], count()}.
-list_remove(_, [], Acc, Cnt)                  -> {Acc, Cnt};
-list_remove(Key, [{Key,_}|Entries], Acc, Cnt) -> {Acc++Entries, Cnt-1};
-list_remove(Key, [Head|Entries], Acc, Cnt)    -> list_remove(Key, Entries, [Head|Acc], Cnt).
 
 -spec foreach_impl(function(), table(), index(), depth()) -> ok;
                   (function(), [entry()], index(), -1)    -> ok.
