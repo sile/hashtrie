@@ -35,7 +35,7 @@
     キーに該当する要素をHashTrie内から(もし存在するなら)削除する。
     返り値は、要素削除後のHashTrieインスタンス。
 
-#### hashtrie:foreach(Fn, HashTrie) -> done
+#### hashtrie:foreach(Fn, HashTrie) -> ok
 
     HashTrieに格納されている全要素を走査し、各要素に対して、Fn関数を適用する。
     Fnのシグネチャは、Fn({Key,Value})->any()。

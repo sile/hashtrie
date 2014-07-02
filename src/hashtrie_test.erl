@@ -8,7 +8,7 @@ gen_int_entries(Start,End) ->
     lists:map(fun (X) -> {X,X} end, lists:seq(Start,End-1)).
 
 gen_str_entries(Filepath) ->
-    {ok, In} = file:open(Filepath, read),
+    {ok, In} = file:open(Filepath, [read]),
     read_lines(In,[],0).
 
 read_lines(In, Lines, LineNum) ->
