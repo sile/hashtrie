@@ -16,8 +16,9 @@
          store/3,
          erase/2,
          fold/3,
-         %% TODO: to_list/1, from_list/1,
-         foreach/2
+         foreach/2,
+         to_list/1,
+         from_list/1
         ]).
 
 -export_type([
@@ -117,6 +118,16 @@ foreach(Fun, Trie) ->
                  ok
          end, ok, Trie).
 
+-spec to_list(hashtrie()) -> [{key(), value()}].
+to_list(Trie) ->
+    fold(fun (Key, Value, Acc) -> [{Key, Value} | Acc] end, [], Trie).
+
+-spec from_list([{key(), value()}]) -> hashtrie().
+from_list(Entries) ->
+    lists:foldl(fun ({Key, Value}, Acc) -> store(Key, Value, Acc) end,
+                new(),
+                Entries).
+
 %%----------------------------------------------------------------------------------------------------------------------
 %% Internal Functions
 %%----------------------------------------------------------------------------------------------------------------------
@@ -192,4 +203,3 @@ fold_impl(Fun, Tab, Idx, Dep, Acc0) ->
     Acc1 = fold_impl(Fun, element(Idx, Tab), 1, Dep - 1, Acc0),
     Acc2 = fold_impl(Fun, Tab, Idx + 1, Dep, Acc1),
     Acc2.
-

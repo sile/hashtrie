@@ -58,5 +58,13 @@
     HashTrieに格納されている全要素を走査し、各要素に対して、Fn関数を適用する。
     Fnのシグネチャは、Fn({Key,Value})->any()。
 
+#### hashtrie:to_list(Hashtrie) -> [{Key, Value}]
+
+    連想リストに変換する
+
+#### hashtrie:from_list([{Key, Value}]) -> Hashtrie
+
+    連想リストから生成する
+
 ## 参考
 * [実装概略や計時結果など](http://d.hatena.ne.jp/sile/20101008/1286558755)
