@@ -52,16 +52,16 @@
 -type key()        :: term().
 -type value()      :: term().
 -type entry()      :: {key(), value()}.
--type hashcode()   :: non_neg_integer().
--type index()      :: 1..16.
--type table_size() :: 17.
+-type hashcode()   :: 0..16#FFFFFFFF.
 -type count()      :: non_neg_integer().
--type depth()      :: non_neg_integer().
+-type depth()      :: 0..7.
 -type table()      :: {child(), child(), child(), child(), child(), child(), child(), child(),
                        child(), child(), child(), child(), child(), child(), child(), child()}.
+-type table_size() :: 17.
+-type index()      :: 1..16.
 -type child()      :: table() | [entry()].
 
--type acc() :: term().
+-type acc()         :: term().
 -type fold_fun()    :: fun ((key(), value(), acc()) -> acc()).
 -type foreach_fun() :: fun ((key(), value()) -> any()).
 
@@ -140,20 +140,15 @@ find_candidates(Hash, Tab, Dep) ->
 -spec store_impl(key(), value(), hashcode(), table(), depth(), count()) -> {table(), count()}.
 store_impl(Key, Value, Hash, Tab, 0, Cnt) ->
     Idx = ?index(Hash),
-    {NewEntries, NewCnt} = list_insert(Key, Value, element(Idx,Tab), [], Cnt),
-    {setelement(Idx,Tab,NewEntries), NewCnt};
+    Entries0 = element(Idx, Tab),
+    case lists:keytake(Key, 1, Entries0) of
+        false                -> {setelement(Idx, Tab, [{Key, Value} | Entries0]), Cnt + 1};
+        {value, _, Entries1} -> {setelement(Idx, Tab, [{Key, Value} | Entries1]), Cnt}
+    end;
 store_impl(Key, Value, Hash, Tab, Dep, Cnt) ->
     Idx = ?index(Hash),
     {NewSubTab, NewCnt} = store_impl(Key, Value, ?next(Hash), element(Idx,Tab), Dep-1, Cnt),
     {setelement(Idx,Tab,NewSubTab), NewCnt}.
-
--spec list_insert(key(), value(), [entry()], [entry()], count()) -> {[entry()], count()}.
-list_insert(Key, Value, [{Key,_}|Entries], Acc, Count) ->
-    {[{Key,Value}|Acc]++Entries, Count};
-list_insert(Key, Value, [], Acc, Count) ->
-    {[{Key,Value}|Acc], Count+1};
-list_insert(Key, Value, [Head|Entries], Acc, Count) ->
-    list_insert(Key, Value, Entries, [Head|Acc], Count).
 
 -spec resize(hashtrie()) -> hashtrie().
 resize(#hashtrie{root=Tab,root_depth=Dep,next_resize_trigger=Size}=Trie) ->
@@ -173,13 +168,19 @@ resize_impl(Tab, Dep, N) ->
      ?resize(13,Tab,Dep,N),?resize(14,Tab,Dep,N),?resize(15,Tab,Dep,N),?resize(16,Tab,Dep,N)}.
 
 -spec relocate_entries([entry()], depth()) -> table().
+relocate_entries([], _)      -> ?EMPTY_TABLE;
 relocate_entries(Entries, N) ->
-    lists:foldl(fun({K,_}=Entry, NewTab) ->
-                        Idx = ?nth_index(?hash(K),N),
-                        setelement(Idx,NewTab,[Entry|element(Idx,NewTab)])
-                end,
-                ?EMPTY_TABLE,
-                Entries).
+    [{HeadIdx, HeadEntry} | IdxToEntry] =
+        lists:keysort(1, [{?nth_index(?hash(K), N), E} || {K, _} = E <- Entries]),
+
+    IdxToEntries =
+        lists:foldl(fun ({Idx, E}, [{Idx, Es} | Tail]) -> [{Idx, [E | Es]} | Tail];
+                        ({Idx, E}, List)               -> [{Idx, [E]} | List]
+                    end,
+                    [{HeadIdx, [HeadEntry]}],
+                    IdxToEntry),
+
+    erlang:make_tuple(16, [], IdxToEntries).
 
 -spec erase_impl(key(), hashcode(), table(), depth(), count()) -> {table(), count()}.
 erase_impl(Key, Hash, Tab, 0, Cnt) ->
