@@ -51,16 +51,20 @@ do_bench(KeyType, GenerateFun) ->
               Random = shuffle(Sorted),
               lists:flatmap(
                 fun (MapModule) ->
-                        Empty = (method(MapModule, from_list))([]),
-                        Map   = (method(MapModule, from_list))(Sorted),
-                        [
-                         {KeyType, store, sorted, {Size, LoopCount}, MapModule, times(LoopCount, Sorted, Empty, method(MapModule, store))},
-                         {KeyType, store, random, {Size, LoopCount}, MapModule, times(LoopCount, Random, Empty, method(MapModule, store))},
-                         {KeyType, successful_find, sorted, {Size, LoopCount}, MapModule, times(LoopCount, Sorted, Map, method(MapModule, find))},
-                         {KeyType, successful_find, random, {Size, LoopCount}, MapModule, times(LoopCount, Random, Map, method(MapModule, find))},
-                         {KeyType, successful_erase, sorted, {Size, LoopCount}, MapModule, times(LoopCount, Sorted, Map, method(MapModule, erase))},
-                         {KeyType, successful_erase, random, {Size, LoopCount}, MapModule, times(LoopCount, Random, Map, method(MapModule, erase))}
-                        ]
+                        case lists:member(KeyType, method(MapModule, exclude)) of
+                            true  -> [];
+                            false ->
+                                Empty = (method(MapModule, from_list))([]),
+                                Map   = (method(MapModule, from_list))(Sorted),
+                                [
+                                 {KeyType, store, sorted, {Size, LoopCount}, MapModule, times(LoopCount, Sorted, Empty, method(MapModule, store))},
+                                 {KeyType, store, random, {Size, LoopCount}, MapModule, times(LoopCount, Random, Empty, method(MapModule, store))},
+                                 {KeyType, successful_find, sorted, {Size, LoopCount}, MapModule, times(LoopCount, Sorted, Map, method(MapModule, find))},
+                                 {KeyType, successful_find, random, {Size, LoopCount}, MapModule, times(LoopCount, Random, Map, method(MapModule, find))},
+                                 {KeyType, successful_erase, sorted, {Size, LoopCount}, MapModule, times(LoopCount, Sorted, Map, method(MapModule, erase))},
+                                 {KeyType, successful_erase, random, {Size, LoopCount}, MapModule, times(LoopCount, Random, Map, method(MapModule, erase))}
+                                ]
+                        end
                 end,
                 map_modules())
       end,
@@ -78,24 +82,33 @@ case_list() ->
 
 -spec map_modules() -> [module()].
 map_modules() ->
-    [dict, gb_trees, hashtrie].
+    [dict, gb_trees, hashtrie, array].
 
 -spec method(module(), Method) -> function() when
       Method :: from_list | store | find | erase.
+method(dict, exclude)   -> [];
 method(dict, from_list) -> fun dict:from_list/1;
 method(dict, store)     -> fun ({K, V}, M) -> dict:store(K, V, M) end;
 method(dict, find)      -> fun ({K, _}, M) -> _ = dict:find(K, M), M end;
 method(dict, erase)     -> fun ({K, _}, M) -> dict:erase(K, M) end;
 
+method(gb_trees, exclude)   -> [];
 method(gb_trees, from_list) -> fun gb_trees:from_orddict/1;
 method(gb_trees, store)     -> fun ({K, V}, M) -> gb_trees:enter(K, V, M) end;
 method(gb_trees, find)      -> fun ({K, _}, M) -> _ = gb_trees:lookup(K, M), M end;
 method(gb_trees, erase)     -> fun ({K, _}, M) -> gb_trees:delete_any(K, M) end;
 
+method(hashtrie, exclude)   -> [];
 method(hashtrie, from_list) -> fun hashtrie:from_list/1;
 method(hashtrie, store)     -> fun ({K, V}, M) -> hashtrie:store(K, V, M) end;
 method(hashtrie, find)      -> fun ({K, _}, M) -> _ = hashtrie:find(K, M), M end;
-method(hashtrie, erase)     -> fun ({K, _}, M) -> hashtrie:erase(K, M) end.
+method(hashtrie, erase)     -> fun ({K, _}, M) -> hashtrie:erase(K, M) end;
+
+method(array, exclude)   -> [binary, tuple];
+method(array, from_list) -> fun array:from_orddict/1;
+method(array, store)     -> fun ({K, V}, M) -> array:set(K, V, M) end;
+method(array, find)      -> fun ({K, _}, M) -> _ = array:get(K, M), M end;
+method(array, erase)     -> fun ({K, _}, M) -> array:reset(K, M) end.
 
 times(LoopCount, InputData, Map, Fun) ->
     true = garbage_collect(),
