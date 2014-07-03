@@ -125,7 +125,7 @@ method(Module, Method)   -> ext_method(Module, Method).
 ext_method(splay_tree, exclude)   -> [];
 ext_method(splay_tree, from_list) -> fun (List) -> splay_tree:from_list(shuffle(List)) end;
 ext_method(splay_tree, store)     -> fun ({K, V}, M) -> splay_tree:store(K, V, M) end;
-ext_method(splay_tree, find)      -> fun ({K, _}, M) -> _ = splay_tree:find(K, M), M end;
+ext_method(splay_tree, find)      -> fun ({K, _}, M) -> element(2, splay_tree:find(K, M)) end;
 ext_method(splay_tree, erase)     -> fun ({K, _}, M) -> splay_tree:erase(K, M) end.
 -else.
 -spec ext_method(module(), Method) -> no_return() when
