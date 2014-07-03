@@ -46,8 +46,8 @@
                    root_depth = 0             :: depth(),
                    root = ?EMPTY_TABLE        :: table()}).
 
--opaque hashtrie()             :: #hashtrie{}.
--opaque hashtrie(_Key, _Value) :: #hashtrie{}.
+-type hashtrie()             :: #hashtrie{}.
+-type hashtrie(_Key, _Value) :: #hashtrie{}.
 
 -type key()        :: term().
 -type value()      :: term().

@@ -119,15 +119,17 @@ method(array, find)      -> fun ({K, _}, M) -> _ = array:get(K, M), M end;
 method(array, erase)     -> fun ({K, _}, M) -> array:reset(K, M) end;
 method(Module, Method)   -> ext_method(Module, Method).
 
+-ifdef(USE_SPLAY_TREE).
 -spec ext_method(module(), Method) -> term() when
       Method :: exclude | from_list | store | find | erase.
--ifdef(USE_SPLAY_TREE).
 ext_method(splay_tree, exclude)   -> [];
 ext_method(splay_tree, from_list) -> fun (List) -> splay_tree:from_list(shuffle(List)) end;
 ext_method(splay_tree, store)     -> fun ({K, V}, M) -> splay_tree:store(K, V, M) end;
 ext_method(splay_tree, find)      -> fun ({K, _}, M) -> _ = splay_tree:find(K, M), M end;
 ext_method(splay_tree, erase)     -> fun ({K, _}, M) -> splay_tree:erase(K, M) end.
 -else.
+-spec ext_method(module(), Method) -> no_return() when
+      Method :: exclude | from_list | store | find | erase.
 ext_method(Module, Method) -> error(badarg, [Module, Method]).
 -endif.
 
