@@ -76,10 +76,7 @@ size(#hashtrie{count=Cnt}) -> Cnt.
 
 -spec find(key(), hashtrie()) -> {ok, value()} | error.
 find(Key, #hashtrie{root=Tab, root_depth=Dep}) ->
-    case lists:keyfind(Key, 1, find_candidates(?hash(Key), Tab, Dep)) of
-        false      -> error;
-        {_, Value} -> {ok, Value}
-    end.
+    assoc_find(Key, find_candidates(?hash(Key), Tab, Dep)).
 
 -spec fetch(key(), hashtrie()) -> value().
 fetch(Key, Trie) -> 
@@ -141,11 +138,8 @@ find_candidates(Hash, Tab, Dep) ->
 -spec store_impl(key(), value(), hashcode(), table(), depth(), count()) -> {table(), count()}.
 store_impl(Key, Value, Hash, Tab, 0, Cnt) ->
     Idx = ?index(Hash),
-    Entries0 = element(Idx, Tab),
-    case lists:keytake(Key, 1, Entries0) of
-        false                -> {setelement(Idx, Tab, [{Key, Value} | Entries0]), Cnt + 1};
-        {value, _, Entries1} -> {setelement(Idx, Tab, [{Key, Value} | Entries1]), Cnt}
-    end;
+    {NewEntries, NewCnt} = assoc_store(Key, Value, element(Idx,Tab), [], Cnt),
+    {setelement(Idx,Tab,NewEntries), NewCnt};
 store_impl(Key, Value, Hash, Tab, Dep, Cnt) ->
     Idx = ?index(Hash),
     {NewSubTab, NewCnt} = store_impl(Key, Value, ?next(Hash), element(Idx,Tab), Dep-1, Cnt),
@@ -169,27 +163,19 @@ resize_impl(Tab, Dep, N) ->
      ?resize(13,Tab,Dep,N),?resize(14,Tab,Dep,N),?resize(15,Tab,Dep,N),?resize(16,Tab,Dep,N)}.
 
 -spec relocate_entries([entry()], depth()) -> table().
-relocate_entries([], _)      -> ?EMPTY_TABLE;
 relocate_entries(Entries, N) ->
-    [{HeadIdx, HeadEntry} | IdxToEntry] =
-        lists:keysort(1, [{?nth_index(?hash(K), N), E} || {K, _} = E <- Entries]),
-
-    IdxToEntries =
-        lists:foldl(fun ({Idx, E}, [{Idx, Es} | Tail]) -> [{Idx, [E | Es]} | Tail];
-                        ({Idx, E}, List)               -> [{Idx, [E]} | List]
-                    end,
-                    [{HeadIdx, [HeadEntry]}],
-                    IdxToEntry),
-
-    erlang:make_tuple(16, [], IdxToEntries).
+    lists:foldl(fun({K,_}=Entry, NewTab) ->
+                        Idx = ?nth_index(?hash(K),N),
+                        setelement(Idx,NewTab,[Entry|element(Idx,NewTab)])
+                end,
+                ?EMPTY_TABLE,
+                Entries).
 
 -spec erase_impl(key(), hashcode(), table(), depth(), count()) -> {table(), count()}.
 erase_impl(Key, Hash, Tab, 0, Cnt) ->
     Idx = ?index(Hash),
-    case lists:keytake(Key, 1, element(Idx, Tab)) of
-        false               -> {Tab, Cnt};
-        {value, _, Entries} -> {setelement(Idx, Tab, Entries), Cnt - 1}
-    end;
+    {NewEntries, NewCnt} = assoc_erase(Key, element(Idx,Tab), [], Cnt),
+    {setelement(Idx,Tab,NewEntries), NewCnt};
 erase_impl(Key, Hash, Tab, Dep, Cnt) ->
     Idx = ?index(Hash),
     {NewSubTab, NewCnt} = erase_impl(Key, ?next(Hash), element(Idx,Tab), Dep-1, Cnt),
@@ -205,3 +191,18 @@ fold_impl(Fun, Tab, Idx, Dep, Acc0) ->
     Acc1 = fold_impl(Fun, element(Idx, Tab), 1, Dep - 1, Acc0),
     Acc2 = fold_impl(Fun, Tab, Idx + 1, Dep, Acc1),
     Acc2.
+
+-spec assoc_store(key(), value(), [entry()], [entry()], count()) -> {[entry()], count()}.
+assoc_store(Key, Value, [{Key,_}|Entries], Acc, Count) -> {[{Key,Value}|Acc]++Entries, Count};
+assoc_store(Key, Value, [], Acc, Count)                -> {[{Key,Value}|Acc], Count+1};
+assoc_store(Key, Value, [Head|Entries], Acc, Count)    -> assoc_store(Key, Value, Entries, [Head|Acc], Count).
+
+-spec assoc_erase(key(), [entry()], [entry()], count()) -> {[entry()], count()}.
+assoc_erase(_, [], Acc, Cnt)                  -> {Acc, Cnt};
+assoc_erase(Key, [{Key,_}|Entries], Acc, Cnt) -> {Acc++Entries, Cnt-1};
+assoc_erase(Key, [Head|Entries], Acc, Cnt)    -> assoc_erase(Key, Entries, [Head|Acc], Cnt).
+
+-spec assoc_find(key(), [entry()]) -> {ok, value()} | error.
+assoc_find(K, [{K, V} | _]) -> {ok, V};
+assoc_find(K, [_ | Tail])   -> assoc_find(K, Tail);
+assoc_find(_, _)            -> error.
