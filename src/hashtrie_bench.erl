@@ -87,9 +87,9 @@ case_list() ->
 
 -spec map_modules() -> [module()].
 -ifdef(USE_SPLAY_TREE).
-map_modules() -> [dict, gb_trees, hashtrie, array].
--else.
 map_modules() -> [dict, gb_trees, hashtrie, array, splay_tree].
+-else.
+map_modules() -> [dict, gb_trees, hashtrie, array].
 -endif.
 
 -spec method(module(), Method) -> term() when
