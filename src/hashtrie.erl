@@ -3,7 +3,7 @@
 %% @doc Hask link Trie
 -module(hashtrie).
 
--compile(inline).
+-compile([inline, native, {hipe, [o3]}]).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported API
