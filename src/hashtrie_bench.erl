@@ -85,17 +85,17 @@ map_modules() ->
 method(dict, from_list) -> fun dict:from_list/1;
 method(dict, store)     -> fun ({K, V}, M) -> dict:store(K, V, M) end;
 method(dict, find)      -> fun ({K, _}, M) -> _ = dict:find(K, M), M end;
-method(dict, erase)     -> fun dict:erase/2;
+method(dict, erase)     -> fun ({K, _}, M) -> dict:erase(K, M) end;
 
 method(gb_trees, from_list) -> fun gb_trees:from_orddict/1;
 method(gb_trees, store)     -> fun ({K, V}, M) -> gb_trees:enter(K, V, M) end;
 method(gb_trees, find)      -> fun ({K, _}, M) -> _ = gb_trees:lookup(K, M), M end;
-method(gb_trees, erase)     -> fun gb_trees:delete_any/2;
+method(gb_trees, erase)     -> fun ({K, _}, M) -> gb_trees:delete_any(K, M) end;
 
 method(hashtrie, from_list) -> fun hashtrie:from_list/1;
 method(hashtrie, store)     -> fun ({K, V}, M) -> hashtrie:store(K, V, M) end;
 method(hashtrie, find)      -> fun ({K, _}, M) -> _ = hashtrie:find(K, M), M end;
-method(hashtrie, erase)     -> fun hashtrie:erase/2.
+method(hashtrie, erase)     -> fun ({K, _}, M) -> hashtrie:erase(K, M) end.
 
 times(LoopCount, InputData, Map, Fun) ->
     true = garbage_collect(),
