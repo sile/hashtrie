@@ -10,6 +10,11 @@
         ]).
 
 %%----------------------------------------------------------------------------------------------------------------------
+%% Macros
+%%----------------------------------------------------------------------------------------------------------------------
+%% -define(USE_SPLAY_TREE, true).
+
+%%----------------------------------------------------------------------------------------------------------------------
 %% Exported Functions
 %%----------------------------------------------------------------------------------------------------------------------
 -spec bench() -> [PerResult] when
@@ -81,11 +86,14 @@ case_list() ->
     ].
 
 -spec map_modules() -> [module()].
-map_modules() ->
-    [dict, gb_trees, hashtrie, array].
+-ifdef(USE_SPLAY_TREE).
+map_modules() -> [dict, gb_trees, hashtrie, array].
+-else.
+map_modules() -> [dict, gb_trees, hashtrie, array, splay_tree].
+-endif.
 
--spec method(module(), Method) -> function() when
-      Method :: from_list | store | find | erase.
+-spec method(module(), Method) -> term() when
+      Method :: exclude | from_list | store | find | erase.
 method(dict, exclude)   -> [];
 method(dict, from_list) -> fun dict:from_list/1;
 method(dict, store)     -> fun ({K, V}, M) -> dict:store(K, V, M) end;
@@ -108,7 +116,20 @@ method(array, exclude)   -> [binary, tuple];
 method(array, from_list) -> fun array:from_orddict/1;
 method(array, store)     -> fun ({K, V}, M) -> array:set(K, V, M) end;
 method(array, find)      -> fun ({K, _}, M) -> _ = array:get(K, M), M end;
-method(array, erase)     -> fun ({K, _}, M) -> array:reset(K, M) end.
+method(array, erase)     -> fun ({K, _}, M) -> array:reset(K, M) end;
+method(Module, Method)   -> ext_method(Module, Method).
+
+-spec ext_method(module(), Method) -> term() when
+      Method :: exclude | from_list | store | find | erase.
+-ifdef(USE_SPLAY_TREE).
+ext_method(splay_tree, exclude)   -> [];
+ext_method(splay_tree, from_list) -> fun (List) -> splay_tree:from_list(shuffle(List)) end;
+ext_method(splay_tree, store)     -> fun ({K, V}, M) -> splay_tree:store(K, V, M) end;
+ext_method(splay_tree, find)      -> fun ({K, _}, M) -> _ = splay_tree:find(K, M), M end;
+ext_method(splay_tree, erase)     -> fun ({K, _}, M) -> splay_tree:erase(K, M) end.
+-else.
+ext_method(Module, Method) -> error(badarg, [Module, Method]).
+-endif.
 
 times(LoopCount, InputData, Map, Fun) ->
     true = garbage_collect(),
