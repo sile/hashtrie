@@ -13,6 +13,7 @@
 %% Macros
 %%----------------------------------------------------------------------------------------------------------------------
 %% -define(USE_SPLAY_TREE, true).
+%% -define(USE_MAPS, true).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %% Exported Functions
@@ -86,10 +87,20 @@ case_list() ->
     ].
 
 -spec map_modules() -> [module()].
+map_modules() -> [dict, gb_trees, hashtrie, array] ++ map_modules_splay_tree() ++ map_modules_maps().
+
+-spec map_modules_splay_tree() -> list().
 -ifdef(USE_SPLAY_TREE).
-map_modules() -> [dict, gb_trees, hashtrie, array, splay_tree].
+map_modules_splay_tree() -> [splay_tree].
 -else.
-map_modules() -> [dict, gb_trees, hashtrie, array].
+map_modules_splay_tree() -> [].
+-endif.
+
+-spec map_modules_maps() -> list().
+-ifdef(USE_MAPS).
+map_modules_maps() -> [maps].
+-else.
+map_modules_maps() -> [].
 -endif.
 
 -spec method(module(), Method) -> term() when
@@ -117,20 +128,28 @@ method(array, from_list) -> fun array:from_orddict/1;
 method(array, store)     -> fun ({K, V}, M) -> array:set(K, V, M) end;
 method(array, find)      -> fun ({K, _}, M) -> _ = array:get(K, M), M end;
 method(array, erase)     -> fun ({K, _}, M) -> array:reset(K, M) end;
-method(Module, Method)   -> ext_method(Module, Method).
+
+method(splay_tree, Method) -> splay_tree_method(Method);
+method(maps,       Method) -> maps_method(Method).
 
 -ifdef(USE_SPLAY_TREE).
--spec ext_method(module(), Method) -> term() when
-      Method :: exclude | from_list | store | find | erase.
-ext_method(splay_tree, exclude)   -> [];
-ext_method(splay_tree, from_list) -> fun (List) -> splay_tree:from_list(shuffle(List)) end;
-ext_method(splay_tree, store)     -> fun ({K, V}, M) -> splay_tree:store(K, V, M) end;
-ext_method(splay_tree, find)      -> fun ({K, _}, M) -> element(2, splay_tree:find(K, M)) end;
-ext_method(splay_tree, erase)     -> fun ({K, _}, M) -> splay_tree:erase(K, M) end.
+splay_tree_method(exclude)   -> [];
+splay_tree_method(from_list) -> fun (List) -> splay_tree:from_list(shuffle(List)) end;
+splay_tree_method(store)     -> fun ({K, V}, M) -> splay_tree:store(K, V, M) end;
+splay_tree_method(find)      -> fun ({K, _}, M) -> element(2, splay_tree:find(K, M)) end;
+splay_tree_method(erase)     -> fun ({K, _}, M) -> splay_tree:erase(K, M) end.
 -else.
--spec ext_method(module(), Method) -> no_return() when
-      Method :: exclude | from_list | store | find | erase.
-ext_method(Module, Method) -> error(badarg, [Module, Method]).
+splay_tree_method(Method) -> error(badarg, [Method]).
+-endif.
+
+-ifdef(USE_MAPS).
+maps_method(exclude)   -> [];
+maps_method(from_list) -> fun (List) -> maps:from_list(shuffle(List)) end;
+maps_method(store)     -> fun ({K, V}, M) -> maps:put(K, V, M) end;
+maps_method(find)      -> fun ({K, _}, M) -> _ = maps:find(K, M), M end;
+maps_method(erase)     -> fun ({K, _}, M) -> maps:remove(K, M) end.
+-else.
+maps_method(Method) -> error(badarg, [Method]).
 -endif.
 
 times(LoopCount, InputData, Map, Fun) ->
